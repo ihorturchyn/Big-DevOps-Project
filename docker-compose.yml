@@ -1,0 +1,150 @@
+version: '3.7'
+
+services:
+  elasticsearch:
+    build:
+      context: elasticsearch/
+    volumes:
+      - type: bind
+        source: ./elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - type: volume
+        source: elasticsearch
+        target: /usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - elk
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      ELASTIC_PASSWORD: changeme
+
+  logstash:
+    build:
+      context: logstash/
+    volumes:
+      - type: bind
+        source: ./logstash/config/logstash.yml
+        target: /usr/share/logstash/config/logstash.yml
+        read_only: true
+      - type: bind
+        source: ./logstash/pipeline
+        target: /usr/share/logstash/pipeline
+        read_only: true
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    build:
+      context: kibana/
+    volumes:
+      - type: bind
+        source: ./kibana/config/kibana.yml
+        target: /usr/share/kibana/config/kibana.yml
+        read_only: true
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  server:
+    image: jetbrains/teamcity-server
+    ports:
+      - "8112:8111"
+    volumes:
+      - ./data_dir:/data/teamcity_server/datadir
+      - ./log_dir:/opt/teamcity/logs
+  
+  teamcity-agent:
+    image: jetbrains/teamcity-agent
+    environment:
+      - SERVER_URL=http://server:8111
+      - AGENT_NAME=regular_agent
+ 
+ postgres:
+    image: postgres
+    restart: always
+    ports:
+      - 5432:5432
+    environment: 
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: igor
+    volumes: 
+      - "./dumps:/var/dumps"
+
+  mysql-server:
+    image: mysql
+    command: 
+      - mysqld
+      - --character-set-server=utf8
+      - --collation-server=utf8_bin
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - "./dumps:/var/dumps"
+    environment: 
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - MYSQL_ROOT_PASSWORD=Password
+
+  zabbix-java-gateway:
+    image: zabbix/zabbix-java-gateway:alpine-5.0-latest
+    ports:
+      - "10052:10052"
+
+  zabbix-server:
+    image: zabbix/zabbix-server-mysql:alpine-5.0-latest
+    ports: 
+      - 10051:10051
+    volumes:
+      - "./dumps:/var/dumps"
+    links:
+      - mysql-server:mysql-server
+      - zabbix-java-gateway:zabbix-java-gateway
+    environment: 
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+      - ZBX_JAVAGATEWAY="zabbix-java-gateway"
+    depends_on:
+      - mysql-server
+      - zabbix-java-gateway
+
+  zabbix-web-nginx-mysql:
+    image: zabbix/zabbix-web-nginx-mysql:alpine-5.0-latest
+    ports:
+      - 8081:8080
+      - 8443:8443
+    links:
+      - mysql-server:mysql-server
+      - zabbix-server:zabbix-server
+    volumes:
+      - "./dumps:/var/dumps"
+    environment: 
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix
+    depends_on:
+      - mysql-server
+      - zabbix-server
+  
+  zabbix-agent:
+    image: zabbix/zabbix-agent:alpine-5.0-latest
+    ports: 
+      - 10050:10050
+    volumes:
+      - "./dumps:/var/dumps"
+    links:
+      - zabbix-server:zabbix-server
+
+
+volumes:
+  elasticsearch:
