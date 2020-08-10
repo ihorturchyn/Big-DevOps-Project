@@ -1,0 +1,26 @@
+version 3.7
+services:
+
+#Apache Hadoop
+
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
+    container_name: namenode
+    volumes:
+      - "./dumps:/var/dumps"
+    environment:
+      - CLUSTER_NAME=Igor
+    ports:
+      - "50070:50070"
+      
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
+    container_name: datanode
+    volumes:
+      - "./dumps:/var/dumps"
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070"
+    depends_on:
+      - namenode
+    ports:
+      - "50075:50075"

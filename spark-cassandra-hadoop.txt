@@ -1,0 +1,83 @@
+version: "3.7"
+services:
+#Apache Cassandra  
+  cassandra_seed:
+    image: cassandra
+    hostname: cassandra_seed1
+    restart: always
+    ports:
+      - 9043:9042
+    container_name: cassandra_seed1
+    networks: 
+      - default_network
+  cassandra_slave:
+    image: cassandra
+    container_name: cassandra_slave1
+    hostname: cassandra_slave1
+    restart: always
+    links:
+      - cassandra_seed:seed1
+    environment: 
+      - CASSANDRA_SEEDS=seed1
+    ports: 
+      - 9044:9042
+    networks: 
+      - default_network
+      
+# #Apache Hadoop
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop2.7.4-java8
+    container_name: namenode
+    volumes:
+      - "./dumps:/var/dumps"
+    environment:
+      - CLUSTER_NAME=Igor
+    ports:
+      - "50070:50070"
+    networks: 
+      - default_network
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop2.7.4-java8
+    container_name: datanode
+    volumes:
+      - "./dumps:/var/dumps"
+    environment:
+      SERVICE_PRECONDITION: "namenode:50070"
+    depends_on:
+      - namenode
+    ports:
+      - "50075:50075"
+    networks: 
+      - default_network
+
+#Apache Spark
+  spark-master:
+    image: bde2020/spark-master:2.4.0-hadoop2.7
+    ports:
+      - 7077:7077
+      - 8080:8080
+    container_name: spark-master
+    restart: always
+    networks: 
+      - default_network
+     
+  spark-worker:
+    image: bde2020/spark-worker:2.4.0-hadoop2.7
+    container_name: spark-worker
+    depends_on: 
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077  
+    ports:
+      - 8081:8081
+      - 4040:4040
+    # links:
+    #   - cassandra_seed
+    #   - cassandra_slave
+    #   - namenode
+    networks: 
+      - default_network
+
+networks: 
+  default_network:
+    external: true

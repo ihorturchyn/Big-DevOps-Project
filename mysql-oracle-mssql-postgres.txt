@@ -1,0 +1,51 @@
+version: "3.7"
+
+services:
+  db1:
+    image: mysql
+    restart: always
+    ports:
+      - 3316:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: igor
+      MYSQL_PASSWORD: Password
+    volumes:
+      - "./dumps:/var/dumps" 
+    
+  postgres:
+    image: postgres
+    restart: always
+    ports:
+      - 5432:5432
+    environment: 
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: igor
+    volumes: 
+      - "./dumps:/var/dumps"
+  
+  oracledb:
+    commands:
+      - docker login -u <user> -p <password>
+      - docker pull store/oracle/database-enterprise:12.2.0.1
+    image: store/oracle/database-enterprise:12.2.0.1
+    restart: always
+    volumes:  
+      - "./dumps:/var/dumps"
+    environment: 
+      - DB_SID=oracle
+      - DB_PDB=Test
+    ports: 
+      - 1521:1521
+      - 8082:8082
+      
+   SQL-server:  
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    restart: always
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Password
+    volumes:
+      - "./dumps:/var/dumps" 

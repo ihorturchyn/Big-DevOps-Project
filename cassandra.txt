@@ -1,0 +1,60 @@
+#How to create Cassandra cluster using docker-compose.yml file:
+version: "3.7"
+services:
+  cass1:
+    image: cassandra
+    container_name: cassandra1
+    hostname: cassandra1
+    restart: always
+    ports:
+      - 9043:9042
+    #environment:
+    volumes: 
+      - "./dumps:/var/dumps" 
+    networks: 
+      - default_network
+  cass2:
+    image: cassandra
+    container_name: cassandra2
+    restart: always
+    ports: 
+      - 9044:9042
+    volumes: 
+      - "./dumps:/var/dumps"
+    links:
+      - cass1:seed1
+    environment: 
+      - CASSANDRA_SEEDS=seed1
+    networks: 
+      - default_network
+  cass3:
+    image: cassandra
+    container_name: cassandra3
+    restart: always
+    ports: 
+      - 9045:9042
+    volumes: 
+      - "./dumps:/var/dumps"
+    links:
+      - cass1:seed1
+    environment: 
+      - CASSANDRA_SEEDS=seed1
+    networks: 
+      - default_network
+  cass4:
+    image: cassandra
+    container_name: cassandra4
+    restart: always
+    ports: 
+      - 9046:9042
+    volumes: 
+      - "./dumps:/var/dumps"
+    links:
+      - cass1:seed1
+    environment: 
+      - CASSANDRA_SEEDS=seed1
+    networks: 
+      - default_network
+networks: 
+  default_network:
+    external: true
